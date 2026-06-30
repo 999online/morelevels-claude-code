@@ -4,13 +4,13 @@ A Claude Code **plugin marketplace** (GitHub) for the `morelevels` level-up plug
 `lm-claude-code` layout, hosted on GitHub.
 
 The `morelevels` plugin assesses your Claude Code setup level (0-10, the MIT "10 Levels of Claude
-Code" model), then submits **allowlisted signals only** to the [morelevels](https://github.com/999online/morelevels-plugin)
+Code" model), then submits **allowlisted signals only** to the [morelevels](https://github.com/999online/morelevels)
 dashboard via a bundled MCP server. It never sends file contents, paths, env values, or repo names.
 
 ## Setup (3 steps, no terminal)
 
 ```
-/plugin marketplace add https://github.com/999online/morelevels-plugin
+/plugin marketplace add https://github.com/999online/morelevels-claude-code
 /plugin install morelevels
 /morelevels
 ```

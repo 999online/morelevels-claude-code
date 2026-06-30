@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "morelevels": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/server.js"],
+      "env": {
+        "MORELEVELS_API_URL": "${MORELEVELS_API_URL}",
+        "MORELEVELS_TOKEN": "${MORELEVELS_TOKEN}"
+      }
+    }
+  }
+}

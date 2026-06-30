@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "MCP server wrapping the morelevels API (submit level + read progression).",
+  "description": "Zero-dependency MCP server wrapping the morelevels API (submit level + read progression + save token).",
   "bin": {
     "morelevels-mcp": "./server.js"
   },
@@ -12,8 +12,5 @@
   },
   "engines": {
     "node": ">=18"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0"
   }
 }

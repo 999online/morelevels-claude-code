@@ -7,33 +7,19 @@ The `morelevels` plugin assesses your Claude Code setup level (0-10, the MIT "10
 Code" model), then submits **allowlisted signals only** to the [morelevels](https://github.com/999online/morelevels-plugin)
 dashboard via a bundled MCP server. It never sends file contents, paths, env values, or repo names.
 
-## Install
+## Setup (3 steps, no terminal)
 
 ```
 /plugin marketplace add https://github.com/999online/morelevels-plugin
 /plugin install morelevels
+/morelevels
 ```
 
+On the **first** `/morelevels`, it asks for your token once: open your morelevels dashboard → mint a
+submission token → paste it. That's it — the token is saved to `~/.morelevels.json` and every later
+run just works. **No environment variables, no `npm install`, no shell editing.**
+
 (For local development: `/plugin marketplace add ~/Desktop/ideas/morelevels-claude-code`.)
-
-## One-time setup
-
-1. **Install the MCP server deps:**
-   ```bash
-   cd plugins/morelevels/mcp && npm install && node server.js --selftest
-   ```
-2. **Mint a submission token** from the morelevels dashboard (sign in → mint a token). For local
-   QA against a dev API, use the dev-only endpoint:
-   ```bash
-   curl -X POST http://localhost:8787/dev/mint-token \
-     -H 'content-type: application/json' \
-     -d '{"email":"you@example.com"}'
-   ```
-3. **Export the env vars** (see `.env.example`) before starting Claude Code:
-   ```bash
-   export MORELEVELS_API_URL=http://localhost:8787   # omit to use the default
-   export MORELEVELS_TOKEN=<your-token>
-   ```
 
 ## Use
 
@@ -42,6 +28,13 @@ dashboard via a bundled MCP server. It never sends file contents, paths, env val
 /morelevels --assess   # same, but skip the "build the first step" offer
 /morelevels --build    # skip assessment, build the next roadmap step
 ```
+
+## For developers (optional)
+
+The MCP server is zero-dependency — `node plugins/morelevels/mcp/server.js` runs with no install.
+Self-check: `node plugins/morelevels/mcp/server.js --selftest`. You can override config with the
+`MORELEVELS_TOKEN` / `MORELEVELS_API_URL` env vars (they win over `~/.morelevels.json`); see
+`.env.example`. Set `DEFAULT_API_URL` in `server.js` to the production URL at deploy.
 
 ## What gets submitted (and what never does)
 

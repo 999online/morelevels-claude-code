@@ -105,10 +105,20 @@ Send only those keys. The tool returns:
 - Then call **`morelevels_my_level`** and show progression: `current`, `highest`, `levelName`, and
   `nextStep` (what to do to reach the next level). If `nextStep` is null they're at Level 10.
 
-**If the submit fails** (e.g. `MORELEVELS_TOKEN is not set`, or a 401): tell the user to mint a
-submission token from the morelevels dashboard (or `POST /dev/mint-token` locally), export
-`MORELEVELS_TOKEN` (and `MORELEVELS_API_URL` if not localhost), and restart Claude Code. Still show
-the local assessment so the run isn't wasted.
+**First run — no token yet?** If `morelevels_submit` returns an error containing `NO_TOKEN` or
+`UNAUTHORIZED`, do **not** fail. Run this one-time setup, then retry — no env vars, no restart:
+
+1. Tell the user: "morelevels needs a one-time token. Open your morelevels dashboard, sign in, mint
+   a submission token, and paste it here." (Local dev: they can instead run
+   `curl -X POST <apiUrl>/dev/mint-token -H 'content-type: application/json' -d '{"email":"you@example.com"}'`
+   and paste the `token` from the response.)
+2. Take the pasted token and call the **`morelevels_save_config`** MCP tool with
+   `{ "token": "<pasted>" }` (add `"apiUrl"` only if they're not on the default). It saves to
+   `~/.morelevels.json` (chmod 600) — tell them they won't be asked again.
+3. Retry `morelevels_submit` with the same `{ level, signals, os }`. It now reads the saved token.
+
+Never ask the user to set environment variables or edit shell files. If the retry still fails, show
+the local assessment so the run isn't wasted and report the exact error.
 
 ## Phase 4 — Build the first step (optional)
 

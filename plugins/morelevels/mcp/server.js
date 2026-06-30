@@ -32,7 +32,7 @@ import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 
 // Set to the morelevels production URL at deploy. Localhost is the dev default.
-const DEFAULT_API_URL = 'http://localhost:8787';
+const DEFAULT_API_URL = 'https://morelevels-api.999online.workers.dev';
 const PROTOCOL_VERSION = '2025-06-18';
 
 // ---- the allowlist (mirrors morelevels packages/core/src/schemas.ts) ----

@@ -1,7 +1,7 @@
 {
   "name": "morelevels",
   "description": "Assess your Claude Code setup level (0-10) and submit allowlisted signals to the morelevels dashboard.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "Audruey Gana",
     "email": "audruey.gana@legalmatch.com"

@@ -32,6 +32,6 @@ Resolution order:
 | token | `MORELEVELS_TOKEN` env (dev override) → `~/.morelevels.json` `.token` |
 | apiUrl | `MORELEVELS_API_URL` env → `~/.morelevels.json` `.apiUrl` → `DEFAULT_API_URL` constant |
 
-`DEFAULT_API_URL` in `server.js` is `http://localhost:8787`; set it to the morelevels production URL
-at deploy so non-devs need only paste a token. `MORELEVELS_CONFIG_PATH` overrides the config file
+`DEFAULT_API_URL` in `server.js` is `https://morelevels-api.999online.workers.dev` (production); override
+with `MORELEVELS_API_URL` env or `~/.morelevels.json` `.apiUrl` for local dev. `MORELEVELS_CONFIG_PATH` overrides the config file
 location (used by the self-check).

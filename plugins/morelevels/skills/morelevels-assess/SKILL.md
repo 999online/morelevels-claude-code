@@ -41,8 +41,8 @@ as a gap).
 | `hasClaudeMd` | bool | Any of `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md`, `~/.claude/CLAUDE.md` exists |
 | `mcpServerCount` | int≥0 | Count distinct MCP servers across project `.mcp.json` + `~/.claude.json` `mcpServers` |
 | `customSkillCount` | int≥0 | Count entries in `.claude/commands/` + `.claude/skills/` (project and `~/.claude/`) |
-| `hasStructuredMemory` | bool | A `memory/` directory exists with real structure (subfolders/files, not just an empty dir) |
-| `memoryReferencedInClaudeMd` | bool | A CLAUDE.md routes to / references the memory files |
+| `hasManagedMemory` | bool | Native Auto Memory in use (`~/.claude/projects/<proj>/memory/MEMORY.md` exists with real content, not just an empty scaffold) **OR** a legacy `memory/` directory with real structure |
+| `hasContextRouting` | bool | Context is intentionally composed/scoped: CLAUDE.md uses `@import`/`@path`, **OR** `.claude/rules/*.md` exist, **OR** a CLAUDE.md references the memory dir (legacy) |
 | `hasComplexSkills` | bool | At least one skill is 80+ lines OR has multi-phase steps / approval gates / tool calls |
 | `hasSubagents` | bool | Agent definitions in `.claude/agents/` or `~/.claude/agents/`, or skills that spawn subagents |
 | `hasHooks` | bool | Hook configs in `.claude/settings.json` (PreToolUse / PostToolUse / etc.) |
@@ -69,7 +69,7 @@ ladder, stop at the first gap. (Same rule as the morelevels server, which re-der
 | 1 Grounded | `hasClaudeMd` |
 | 2 Connected | `mcpServerCount >= 1` |
 | 3 Skilled | `customSkillCount >= 3` |
-| 4 Context Architect | `hasStructuredMemory && memoryReferencedInClaudeMd` |
+| 4 Context Architect | `hasManagedMemory && hasContextRouting` |
 | 5 System Builder | `hasComplexSkills && hasSubagents && hasHooks` |
 | 6 Pipeline Engineer | `hasHeadlessScripts` |
 | 7 Browser Commander | `hasBrowserAutomation` |
@@ -128,7 +128,7 @@ do the local action for the next tier (all local, nothing submitted):
 - → L1: draft a `CLAUDE.md` for this project.
 - → L2: set up the user's first MCP server in `.mcp.json`.
 - → L3: create a `.claude/commands/` skill for their most-repeated task.
-- → L4: scaffold a `memory/` structure and reference it from `CLAUDE.md`.
+- → L4: verify native Auto Memory is on (`/memory`; on by default since Claude Code v2.1.59), then add context routing — a `.claude/rules/<scope>.md` scoped rule and/or a CLAUDE.md `@import`. (A legacy `memory/` dir referenced from CLAUDE.md still counts.)
 - → L5: add phases + an approval gate (and a subagent call / hook) to their most-used skill.
 - → L6: write a `claude -p` headless script for a routine task.
 - → L7+: walk them through browser automation / multi-agent / scheduling / orchestration setup.
@@ -140,7 +140,7 @@ If `--build` was passed, skip Phases 1-3 and go straight to building (ask which 
 **Reference — the 10 levels** (name + the quest to reach it):
 
 0 Terminal Tourist · 1 Grounded (add a CLAUDE.md) · 2 Connected (connect an MCP) · 3 Skilled (3+
-skills) · 4 Context Architect (structured memory referenced from CLAUDE.md) · 5 System Builder
+skills) · 4 Context Architect (managed memory + context routing — Auto Memory / `@imports` / `.claude/rules/`) · 5 System Builder
 (multi-phase skill + subagents + hooks) · 6 Pipeline Engineer (`claude -p` scripts) · 7 Browser
 Commander (Playwright/Puppeteer) · 8 Multi-Agent Operator (coordinated parallel agents) · 9 Always
 On (scheduled/unattended) · 10 Swarm Architect (agents managing agents).

@@ -57,7 +57,8 @@ as a gap).
 | `hasAgentOrchestration` | bool | Autonomous loops / orchestration frameworks — agents that spawn and manage other agents |
 
 Then detect `os`: macOS → `macos`, Linux → `linux`, Windows → `windows`, WSL → `wsl`, else `other`
-(use `uname` / platform; WSL shows Linux + a Microsoft kernel string). `os` is a tag only — it never
+(detect portably — `uname -s` on Unix; on native Windows use `$env:OS` / `ver` since `uname` is
+absent there; WSL shows Linux + a Microsoft kernel string). `os` is a tag only — it never
 changes the level.
 
 You MAY ask the user (optional, for the explanation only, NOT submitted): what they mainly use

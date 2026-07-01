@@ -27,7 +27,7 @@
  * tools/list, initialize shape, and a config round-trip + env-over-file precedence.
  */
 import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 
@@ -150,6 +150,8 @@ export function saveConfig({ token, apiUrl }) {
   merged.token = token.trim();
   if (typeof apiUrl === 'string' && apiUrl.trim()) merged.apiUrl = apiUrl.trim().replace(/\/$/, '');
   const path = configPath();
+  // ponytail: mode 0o600 is a no-op on Windows (POSIX bits ignored; NTFS uses ACLs), so the
+  // token file isn't owner-restricted there. Fine for a single token; add icacls if it matters.
   writeFileSync(path, JSON.stringify(merged, null, 2) + '\n', { mode: 0o600 });
   return { saved: true, path };
 }
@@ -437,7 +439,7 @@ async function selftest() {
   assert(unknown.error && unknown.error.code === -32601, 'unknown method not -32601');
 
   // config round-trip + precedence (isolated temp path)
-  const tmp = join(process.env.TMPDIR || '/tmp', `morelevels-selftest-${process.pid}.json`);
+  const tmp = join(tmpdir(), `morelevels-selftest-${process.pid}.json`);
   process.env.MORELEVELS_CONFIG_PATH = tmp;
   delete process.env.MORELEVELS_TOKEN;
   delete process.env.MORELEVELS_API_URL;

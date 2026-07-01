@@ -22,11 +22,15 @@ which can hold API keys, tokens, repo paths, and source. You submit **ONLY**:
 
 - an integer `level` (0-10),
 - the 13 allowlisted **signals** (booleans + two counts) below,
-- an `os` tag.
+- an `os` tag,
+- optionally `levelDetails` — short per-level HTML **summaries** for the dashboard (Phase 3), built
+  ONLY from the signals + the level model.
 
-**Never** pass file contents, file paths, env values, repo/company names, or anything else to the
-`morelevels_submit` tool. The server rejects extra fields (zod `.strict()` → 400) and the MCP
-server strips them, but you must not put them there in the first place.
+**Never** pass file contents, file paths, env values, repo/company names, or secrets — not in the
+signals and **not in `levelDetails`**. The server bounds + leak-scans `levelDetails` (absolute
+paths, secrets, emails, env values, and `<script>`/event handlers → 400) and the MCP server rejects
+the same, but you must not put them there in the first place. Generic level-model filenames
+(`CLAUDE.md`, `.mcp.json`, `settings.json`, `.claude/rules/`) are fine — they describe the model.
 
 ---
 
@@ -87,13 +91,28 @@ build offer.
 
 ## Phase 3 — Submit to morelevels (replaces the old HTML dashboard)
 
-Call the **`morelevels_submit`** MCP tool with exactly:
+**First, write `levelDetails`** — short HTML summaries the dashboard shows under each tier in the
+journey tab (this is the summarized form of the old per-level HTML). Keys are level numbers as
+strings, `"0"`..`"10"`. Cover the tiers the user has cleared plus the next one — skip levels beyond
+next (the dashboard shows their default quest text). For each:
+
+- **Cleared level** → *what you have*, from the signals. e.g. `"2": "<span>✓ 3 MCP servers connected</span>"`,
+  `"3": "<span>✓ 4 custom skills</span>"`.
+- **Next level** → the **gap** (which criteria are missing) + **one** concrete step. e.g.
+  `"5": "Have complex skills + subagents; <strong>missing hooks</strong>. Add a PostToolUse hook in settings.json."`
+
+Rules (the server + MCP reject violations): derive **only** from the signals + level model; ≤600
+chars per level, ≤12 levels; plain inline tags only (`<span> <strong> <em> <br> <code> <ul> <li>`)
+with **no attributes**; **never** file paths, repo/company names, env values, secrets, or file
+contents. Generic model filenames (`CLAUDE.md`, `settings.json`…) are fine.
+
+Then call the **`morelevels_submit`** MCP tool:
 
 ```json
-{ "level": <0-10>, "signals": { ...the 13 signals... }, "os": "<os>" }
+{ "level": <0-10>, "signals": { ...the 13 signals... }, "os": "<os>", "levelDetails": { "<lvl>": "<html>", ... } }
 ```
 
-Send only those keys. The tool returns:
+`levelDetails` is optional — omit it only if you truly can't summarize. The tool returns:
 
 ```json
 { "submission": { "id", "level", "os", "createdAt" }, "claimedLevel": <n>, "corrected": <bool> }

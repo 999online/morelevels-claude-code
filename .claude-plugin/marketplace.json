@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Marketplace for the morelevels Claude Code level-up plugin.",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "plugins": [
     {
       "name": "morelevels",
       "source": "./plugins/morelevels/",
       "description": "Assess your Claude Code setup level (0-10) and submit allowlisted signals to the morelevels dashboard.",
-      "version": "0.2.0"
+      "version": "0.3.0"
     }
   ]
 }

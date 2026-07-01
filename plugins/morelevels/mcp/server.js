@@ -52,6 +52,49 @@ const BOOL_SIGNALS = [
 const COUNT_SIGNALS = ['mcpServerCount', 'customSkillCount'];
 const OS_VALUES = ['macos', 'linux', 'windows', 'wsl', 'other'];
 
+// levelDetails: bounded, leak-scanned per-level HTML summaries (mirrors morelevels
+// packages/core/src/schemas.ts). Free text re-opens THE LINE, so it is capped + marker-scanned
+// here too. Generic model filenames (CLAUDE.md, settings.json…) are fine; paths/secrets/emails/
+// env values/scripts are NOT.
+const LEVEL_DETAILS_MAX_ENTRIES = 12;
+const LEVEL_DETAIL_MAX_LEN = 600;
+const LEVEL_KEY_RE = /^(?:10|[0-9])$/;
+const LEVEL_DETAILS_FORBIDDEN = [
+  /\/Users\/|\/home\//, // unix home path
+  /[A-Za-z]:\\/, // windows path
+  /sk-|api[_-]?key|secret|bearer|password|-{5}BEGIN/i, // secret / key literal
+  /@[\w.-]+\.\w+/, // email address
+  /\w+=\w/, // env assignment / raw attribute
+  /<script|on\w+\s*=|javascript:/i, // script / event handler / js url
+];
+
+/**
+ * Validate + strip levelDetails to the bounded, leak-safe shape. Keys must be a level "0".."10",
+ * values short HTML with no forbidden marker. Throws on any violation so the model fixes it.
+ */
+export function buildLevelDetails(src) {
+  if (!src || typeof src !== 'object' || Array.isArray(src))
+    throw new Error('levelDetails must be an object mapping level "0".."10" to an HTML string');
+  const keys = Object.keys(src);
+  if (keys.length > LEVEL_DETAILS_MAX_ENTRIES)
+    throw new Error(`levelDetails accepts at most ${LEVEL_DETAILS_MAX_ENTRIES} levels`);
+  const out = {};
+  for (const k of keys) {
+    if (!LEVEL_KEY_RE.test(k)) throw new Error(`levelDetails key must be a level 0-10, got "${k}"`);
+    const v = src[k];
+    if (typeof v !== 'string') throw new Error(`levelDetails["${k}"] must be a string`);
+    if (v.length > LEVEL_DETAIL_MAX_LEN)
+      throw new Error(`levelDetails["${k}"] exceeds ${LEVEL_DETAIL_MAX_LEN} chars — summarize`);
+    if (LEVEL_DETAILS_FORBIDDEN.some((re) => re.test(v)))
+      throw new Error(
+        `levelDetails["${k}"] contains a forbidden marker (path/secret/email/env/script). ` +
+          'Summarize from the signals + level model only — no paths, repo names, env values, or secrets.'
+      );
+    out[k] = v;
+  }
+  return out;
+}
+
 /**
  * Validate AND strip to the allowlist. Returns ONLY { level, signals, os } — anything else on the
  * input (or on input.signals) is discarded here. Throws on a malformed allowlisted field.
@@ -78,8 +121,11 @@ export function buildSubmitPayload(input) {
     if (typeof v !== 'boolean') throw new Error(`signals.${k} must be a boolean`);
     signals[k] = v;
   }
-  // allowlist only — nothing outside { level, signals, os } reaches the wire (THE LINE)
-  return { level, signals, os: input.os };
+  // allowlist only — nothing outside { level, signals, os, levelDetails } reaches the wire (THE LINE)
+  const payload = { level, signals, os: input.os };
+  if (input.levelDetails !== undefined && input.levelDetails !== null)
+    payload.levelDetails = buildLevelDetails(input.levelDetails);
+  return payload;
 }
 
 // ---- config (home-dir JSON file; no env vars required) ----
@@ -185,6 +231,15 @@ const SUBMIT_INPUT_SCHEMA = {
         hasAgentOrchestration: { type: 'boolean' },
       },
     },
+    levelDetails: {
+      type: 'object',
+      description:
+        'Optional. Short HTML summaries per level for the dashboard journey tab — keys "0".."10". ' +
+        'Cleared levels: what the user HAS (from signals). Next level: the gap + one step. ' +
+        'Derive ONLY from the signals + level model. Inline tags only, no attributes. NEVER include ' +
+        'file paths, repo/company names, env values, secrets, or file contents (rejected otherwise).',
+      additionalProperties: { type: 'string', maxLength: LEVEL_DETAIL_MAX_LEN },
+    },
   },
 };
 
@@ -192,10 +247,12 @@ const TOOLS = [
   {
     name: 'morelevels_submit',
     description:
-      'Submit a Claude Code level assessment to the morelevels dashboard. Send ONLY the integer ' +
-      'level, the allowlisted signals, and the os tag — never file contents, paths, env values, ' +
-      'or repo names. Returns the server-re-derived level and a `corrected` flag. If it errors ' +
-      'with NO_TOKEN or UNAUTHORIZED, ask the user for their token and call morelevels_save_config.',
+      'Submit a Claude Code level assessment to the morelevels dashboard. Send the integer ' +
+      'level, the allowlisted signals, the os tag, and OPTIONALLY `levelDetails` (short per-level ' +
+      'HTML summaries for the journey tab). Never send file contents, paths, env values, or repo ' +
+      'names — not in signals and not in levelDetails. Returns the server-re-derived level and a ' +
+      '`corrected` flag. If it errors with NO_TOKEN or UNAUTHORIZED, ask the user for their token ' +
+      'and call morelevels_save_config.',
     inputSchema: SUBMIT_INPUT_SCHEMA,
   },
   {
@@ -331,6 +388,35 @@ async function selftest() {
   assert(JSON.stringify(Object.keys(out).sort()) === JSON.stringify(['level', 'os', 'signals']), 'top-level keys not allowlisted');
   assert(!('filePath' in out) && !('apiKey' in out), 'smuggled top-level field survived');
   assert(!('claudeMdContents' in out.signals) && !('repoName' in out.signals), 'smuggled signal field survived');
+  assert(!('levelDetails' in out), 'levelDetails present when caller sent none');
+
+  // levelDetails: a clean map survives (incl. generic filenames); dirty maps throw
+  const withDetails = buildSubmitPayload({
+    level: 4,
+    os: 'macos',
+    signals: validSignals,
+    levelDetails: {
+      2: '<span>3 MCP servers connected</span>',
+      4: 'Next: add <strong>hooks</strong> to settings.json',
+    },
+  });
+  assert(withDetails.levelDetails['2'].includes('MCP'), 'clean levelDetails dropped');
+  assert(withDetails.levelDetails['4'].includes('settings.json'), 'generic filename wrongly rejected');
+  for (const dirty of [
+    { 1: 'see /Users/me/project for details' },
+    { 1: 'token sk-abc123def456 leaked' },
+    { 1: '<script>alert(1)</script>' },
+    { 1: 'ping me at dev@example.com' },
+    { 11: 'level key out of range' },
+  ]) {
+    let bad = false;
+    try {
+      buildSubmitPayload({ level: 1, os: 'macos', signals: validSignals, levelDetails: dirty });
+    } catch {
+      bad = true;
+    }
+    assert(bad, `dirty levelDetails not rejected: ${JSON.stringify(dirty)}`);
+  }
 
   let threw = false;
   try {
